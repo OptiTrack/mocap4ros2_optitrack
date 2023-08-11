@@ -1,6 +1,6 @@
 mocap_optitrack_driver_node:
   ros__parameters:
-    connection_type: "Multicast" # Unicast / Multicast
+    connection_type: "Unicast" # Unicast / Multicast
     server_address: "192.168.112.1"
     local_address: "192.168.121.116"
     multicast_address: "239.255.42.99"
@@ -18,7 +18,7 @@ mocap_optitrack_driver_node:
     publish_y_up_tf: true
     y_up_frame_name: "map"
     publish_tf: true
-    parent_frame_name: "optitrack"
+    rb_parent_frame_name: "optitrack"
     rigid_bodies:
       1:
         name: "dean_rb"

@@ -34,7 +34,7 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 
 OptitrackDriverNode::OptitrackDriverNode()
-: ControlledLifecycleNode("mocap_optitrack_driver_node", 
+: LifecycleNode("mocap_optitrack_driver_node", 
                             rclcpp::NodeOptions()
                               .allow_undeclared_parameters(true)
                               .automatically_declare_parameters_from_overrides(true))
@@ -103,7 +103,6 @@ void OptitrackDriverNode::update_rigid_body_id_map()
 void OptitrackDriverNode::get_rigid_bodies_from_params()
 {
   const std::vector<std::string> prefix{"rigid_bodies"};
-  const std::string name_with_dot = std::string(this->get_name()) + ".";
   const auto result = this->get_node_parameters_interface()->list_parameters(
     prefix, 0
   );
@@ -116,14 +115,14 @@ void OptitrackDriverNode::get_rigid_bodies_from_params()
       continue;
     }
     if (rigid_body_id_map.count(temp_name) > 0) {
-      tf_frames_to_publish.insert(temp_name);
+      tf_rigid_bodies_to_publish.insert(temp_name);
     }
     else {
       RCLCPP_WARN_STREAM(get_logger(), "Unable to find '" << temp_name << "' on NatNet server. Check Assets tab in Motive.");
     }
   }
   RCLCPP_INFO(get_logger(), "Able to publish tf of the following rigid bodies:");
-  for (const auto & str : tf_frames_to_publish) {
+  for (const auto & str : tf_rigid_bodies_to_publish) {
     RCLCPP_INFO_STREAM(get_logger(), "\t" << str);
   }
 }
@@ -133,22 +132,6 @@ bool OptitrackDriverNode::stop_optitrack()
   RCLCPP_INFO(get_logger(), "Disconnecting from optitrack DataStream SDK");
 
   return true;
-}
-
-void
-OptitrackDriverNode::control_start(const mocap_control_msgs::msg::Control::SharedPtr msg)
-{
-  (void)msg;
-  trigger_transition(
-    rclcpp_lifecycle::Transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE));
-}
-
-void
-OptitrackDriverNode::control_stop(const mocap_control_msgs::msg::Control::SharedPtr msg)
-{
-  (void)msg;
-  trigger_transition(
-    rclcpp_lifecycle::Transition(lifecycle_msgs::msg::Transition::TRANSITION_ACTIVATE));
 }
 
 void NATNET_CALLCONV process_frame_callback(sFrameOfMocapData * data, void * pUserData)
@@ -169,7 +152,7 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
   // Markers
   if (mocap_markers_pub_->get_subscription_count() > 0) {
     mocap_msgs::msg::Markers msg;
-    msg.header.frame_id = parent_frame_name_;
+    msg.header.frame_id = rb_parent_frame_name_;
     msg.header.stamp = now();
     msg.frame_number = frame_number_;
 
@@ -197,7 +180,7 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
 
   if (mocap_rigid_body_pub_->get_subscription_count() > 0) {
     mocap_msgs::msg::RigidBodies msg_rb;
-    msg_rb.header.frame_id = parent_frame_name_;
+    msg_rb.header.frame_id = rb_parent_frame_name_;
     msg_rb.header.stamp = now();
     msg_rb.frame_number = frame_number_;
 
@@ -229,11 +212,11 @@ void OptitrackDriverNode::publish_tf_data(sFrameOfMocapData * data)
 {
   for (int i = 0; i < data->nRigidBodies; i++) {
     if (id_rigid_body_map.count(data->RigidBodies[i].ID) > 0 && 
-        tf_frames_to_publish.count(id_rigid_body_map[data->RigidBodies[i].ID]) > 0) {
+        tf_rigid_bodies_to_publish.count(id_rigid_body_map[data->RigidBodies[i].ID]) > 0) {
       geometry_msgs::msg::TransformStamped t;
 
       t.header.stamp = this->get_clock()->now(); //TODO: get this time from NatNet
-      t.header.frame_id = parent_frame_name_;
+      t.header.frame_id = rb_parent_frame_name_;
       t.child_frame_id = id_rigid_body_map[data->RigidBodies[i].ID];
 
       t.transform.translation.x = data->RigidBodies[i].x;
@@ -260,7 +243,7 @@ void OptitrackDriverNode::make_static_transform()
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = this->get_clock()->now();
   t.header.frame_id = y_up_frame_name_;
-  t.child_frame_id = parent_frame_name_;
+  t.child_frame_id = rb_parent_frame_name_;
 
   t.transform.translation.x = 0.0;
   t.transform.translation.y = 0.0;
@@ -311,7 +294,7 @@ OptitrackDriverNode::on_configure(const rclcpp_lifecycle::State & state)
 
   RCLCPP_INFO(get_logger(), "Configured!\n");
 
-  return ControlledLifecycleNode::on_configure(state);
+  return CallbackReturnT::SUCCESS;
 }
 
 CallbackReturnT
@@ -322,7 +305,7 @@ OptitrackDriverNode::on_activate(const rclcpp_lifecycle::State & state)
   mocap_rigid_body_pub_->on_activate();
   RCLCPP_INFO(get_logger(), "Activated!\n");
 
-  return ControlledLifecycleNode::on_activate(state);
+  return CallbackReturnT::SUCCESS;
 }
 
 CallbackReturnT
@@ -333,7 +316,7 @@ OptitrackDriverNode::on_deactivate(const rclcpp_lifecycle::State & state)
   mocap_rigid_body_pub_->on_deactivate();
   RCLCPP_INFO(get_logger(), "Deactivated!\n");
 
-  return ControlledLifecycleNode::on_deactivate(state);
+  return CallbackReturnT::SUCCESS;
 }
 
 CallbackReturnT
@@ -343,7 +326,7 @@ OptitrackDriverNode::on_cleanup(const rclcpp_lifecycle::State & state)
   RCLCPP_INFO(get_logger(), "Cleaned up!\n");
 
   if (disconnect_optitrack()) {
-    return ControlledLifecycleNode::on_cleanup(state);
+    return CallbackReturnT::SUCCESS;
   } else {
     return CallbackReturnT::FAILURE;
   }
@@ -358,7 +341,7 @@ OptitrackDriverNode::on_shutdown(const rclcpp_lifecycle::State & state)
   RCLCPP_INFO(get_logger(), "Shutted down!\n");
 
   if (disconnect_optitrack()) {
-    return ControlledLifecycleNode::on_shutdown(state);
+    return CallbackReturnT::SUCCESS;
   } else {
     return CallbackReturnT::FAILURE;
   }
@@ -373,7 +356,7 @@ OptitrackDriverNode::on_error(const rclcpp_lifecycle::State & state)
 
   disconnect_optitrack();
 
-  return ControlledLifecycleNode::on_error(state);
+  return CallbackReturnT::SUCCESS;;
 }
 
 bool
@@ -465,7 +448,7 @@ OptitrackDriverNode::initParameters()
     publish_tf_ = false;
   }
   if (publish_tf_) {
-    get_parameter<std::string>("parent_frame_name", parent_frame_name_);
+    get_parameter<std::string>("rb_parent_frame_name", rb_parent_frame_name_);
   }
   if (!get_parameter<bool>("publish_y_up_tf", publish_y_up_tf_)) {
     publish_y_up_tf_ = false;

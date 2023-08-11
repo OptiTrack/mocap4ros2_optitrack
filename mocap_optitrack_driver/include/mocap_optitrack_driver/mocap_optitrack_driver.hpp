@@ -58,12 +58,10 @@
 #include <NatNetCAPI.h>
 #include <NatNetClient.h>
 
-#include "mocap_control/ControlledLifecycleNode.hpp"
-
 namespace mocap_optitrack_driver
 {
 
-class OptitrackDriverNode : public mocap_control::ControlledLifecycleNode
+class OptitrackDriverNode : public rclcpp_lifecycle::LifecycleNode
 {
 public:
   OptitrackDriverNode();
@@ -90,8 +88,6 @@ public:
   void make_static_transform();
 
 protected:
-  void control_start(const mocap_control_msgs::msg::Control::SharedPtr msg) override;
-  void control_stop(const mocap_control_msgs::msg::Control::SharedPtr msg) override;
   void update_rigid_bodies(
     const std::shared_ptr<std_srvs::srv::Trigger::Request> request, 
     std::shared_ptr<std_srvs::srv::Trigger::Response> response);
@@ -107,7 +103,7 @@ protected:
 
   std::unordered_map<int, std::string> id_rigid_body_map;
   std::unordered_map<std::string, int> rigid_body_id_map;
-  std::set<std::string> tf_frames_to_publish;
+  std::set<std::string> tf_rigid_bodies_to_publish;
 
   rclcpp_lifecycle::LifecyclePublisher<mocap_msgs::msg::Markers>::SharedPtr mocap_markers_pub_;
   rclcpp_lifecycle::LifecyclePublisher<mocap_msgs::msg::RigidBodies>::SharedPtr
@@ -125,7 +121,7 @@ protected:
   uint16_t server_data_port_;
   bool publish_tf_;
   bool publish_y_up_tf_;
-  std::string parent_frame_name_;
+  std::string rb_parent_frame_name_;
   std::string y_up_frame_name_;
 
   uint32_t frame_number_{0};
