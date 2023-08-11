@@ -52,6 +52,7 @@
 
 #include "tf2/buffer_core.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/static_transform_broadcaster.h"
 
 #include <NatNetTypes.h>
 #include <NatNetCAPI.h>
@@ -86,6 +87,7 @@ public:
 
   void process_frame(sFrameOfMocapData * data);
   void publish_tf_data(sFrameOfMocapData * data);
+  void make_static_transform();
 
 protected:
   void control_start(const mocap_control_msgs::msg::Control::SharedPtr msg) override;
@@ -111,6 +113,7 @@ protected:
   rclcpp_lifecycle::LifecyclePublisher<mocap_msgs::msg::RigidBodies>::SharedPtr
     mocap_rigid_body_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_;
 
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr update_rigid_bodies_srv_;
 
@@ -121,7 +124,9 @@ protected:
   uint16_t server_command_port_;
   uint16_t server_data_port_;
   bool publish_tf_;
+  bool publish_y_up_tf_;
   std::string parent_frame_name_;
+  std::string y_up_frame_name_;
 
   uint32_t frame_number_{0};
 };

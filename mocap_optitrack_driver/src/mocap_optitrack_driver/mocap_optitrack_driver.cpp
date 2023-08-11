@@ -39,13 +39,6 @@ OptitrackDriverNode::OptitrackDriverNode()
                               .allow_undeclared_parameters(true)
                               .automatically_declare_parameters_from_overrides(true))
 {
-  // declare_parameter<std::string>("connection_type", "Unicast");
-  // declare_parameter<std::string>("server_address", "000.000.000.000");
-  // declare_parameter<std::string>("local_address", "000.000.000.000");
-  // declare_parameter<std::string>("multicast_address", "000.000.000.000");
-  // declare_parameter<uint16_t>("server_command_port", 0);
-  // declare_parameter<uint16_t>("server_data_port", 0);
-
   client = new NatNetClient();
   client->SetFrameReceivedCallback(process_frame_callback, this);
 }
@@ -98,20 +91,17 @@ void OptitrackDriverNode::update_rigid_bodies(
 
 void OptitrackDriverNode::update_rigid_body_id_map()
 {
-  // RCLCPP_INFO(get_logger(), "updating rigid body id map");
   for (int i = 0; i < data_descriptions->nDataDescriptions; ++i) {
     if (data_descriptions->arrDataDescriptions[i].type == DataDescriptors::Descriptor_RigidBody) {
       sRigidBodyDescription* rigid_body = data_descriptions->arrDataDescriptions[i].Data.RigidBodyDescription;
       id_rigid_body_map[rigid_body->ID] = rigid_body->szName;
       rigid_body_id_map[rigid_body->szName] = rigid_body->ID;
-      // RCLCPP_INFO_STREAM(get_logger(), "Rigid Body: " << rigid_body->szName << " ID: " << rigid_body->ID);
     }
   }
 }
 
 void OptitrackDriverNode::get_rigid_bodies_from_params()
 {
-  // RCLCPP_INFO(get_logger(), "getting parent frame");
   const std::vector<std::string> prefix{"rigid_bodies"};
   const std::string name_with_dot = std::string(this->get_name()) + ".";
   const auto result = this->get_node_parameters_interface()->list_parameters(
@@ -120,14 +110,12 @@ void OptitrackDriverNode::get_rigid_bodies_from_params()
 
   for (const std::string & prefix : result.prefixes)
   {
-    // RCLCPP_INFO_STREAM(get_logger(), "Reading : " << prefix);
     std::string temp_name;
     if (!get_parameter<std::string>(prefix + ".name", temp_name)) {
       RCLCPP_WARN_STREAM(get_logger(), "Unable to find 'name' sub-parameter in: " << prefix);
       continue;
     }
     if (rigid_body_id_map.count(temp_name) > 0) {
-      // RCLCPP_INFO_STREAM(get_logger(), temp_name << " is a rigid body");
       tf_frames_to_publish.insert(temp_name);
     }
     else {
@@ -209,7 +197,7 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
 
   if (mocap_rigid_body_pub_->get_subscription_count() > 0) {
     mocap_msgs::msg::RigidBodies msg_rb;
-    msg_rb.header.frame_id = "map";
+    msg_rb.header.frame_id = parent_frame_name_;
     msg_rb.header.stamp = now();
     msg_rb.frame_number = frame_number_;
 
@@ -262,6 +250,30 @@ void OptitrackDriverNode::publish_tf_data(sFrameOfMocapData * data)
   }
 }
 
+/**
+ * Adding a static transform from XY ground plane Z up to ZX ground plane Y up
+ * This allows for visualization to match motive output
+ * This new transform has a child that is the optitrack frame of reference
+*/
+void OptitrackDriverNode::make_static_transform()
+{
+  geometry_msgs::msg::TransformStamped t;
+  t.header.stamp = this->get_clock()->now();
+  t.header.frame_id = y_up_frame_name_;
+  t.child_frame_id = parent_frame_name_;
+
+  t.transform.translation.x = 0.0;
+  t.transform.translation.y = 0.0;
+  t.transform.translation.z = 0.0;
+  // XYZ -> ZXY
+  t.transform.rotation.x = 0.5;
+  t.transform.rotation.y = 0.5;
+  t.transform.rotation.z = 0.5;
+  t.transform.rotation.w = 0.5;
+
+  tf_static_broadcaster_->sendTransform(t);
+}
+
 using CallbackReturnT =
   rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
@@ -278,6 +290,7 @@ OptitrackDriverNode::on_configure(const rclcpp_lifecycle::State & state)
   mocap_rigid_body_pub_ = create_publisher<mocap_msgs::msg::RigidBodies>(
     "rigid_bodies", rclcpp::QoS(1000));
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  tf_static_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
 
   std::string node_name(this->get_name());
   
@@ -289,6 +302,9 @@ OptitrackDriverNode::on_configure(const rclcpp_lifecycle::State & state)
   connect_optitrack();
   
   update_rigid_body_id_map();
+  if (publish_y_up_tf_) {
+    make_static_transform();
+  }
   if (publish_tf_) {
     get_rigid_bodies_from_params();
   }
@@ -450,6 +466,12 @@ OptitrackDriverNode::initParameters()
   }
   if (publish_tf_) {
     get_parameter<std::string>("parent_frame_name", parent_frame_name_);
+  }
+  if (!get_parameter<bool>("publish_y_up_tf", publish_y_up_tf_)) {
+    publish_y_up_tf_ = false;
+  }
+  if (publish_y_up_tf_) {
+    get_parameter<std::string>("y_up_frame_name", y_up_frame_name_);
   }
 }
 
