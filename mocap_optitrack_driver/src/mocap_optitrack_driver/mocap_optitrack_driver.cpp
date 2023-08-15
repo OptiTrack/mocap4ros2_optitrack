@@ -203,7 +203,7 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
     mocap_rigid_body_pub_->publish(msg_rb);
   }
   
-  if (publish_tf_) {
+  if (publish_tf_ and activate_tf) {
     publish_tf_data(data);
   }
 }
@@ -303,6 +303,7 @@ OptitrackDriverNode::on_activate(const rclcpp_lifecycle::State & state)
   (void)state;
   mocap_markers_pub_->on_activate();
   mocap_rigid_body_pub_->on_activate();
+  activate_tf = true;
   RCLCPP_INFO(get_logger(), "Activated!\n");
 
   return CallbackReturnT::SUCCESS;
@@ -314,6 +315,7 @@ OptitrackDriverNode::on_deactivate(const rclcpp_lifecycle::State & state)
   (void)state;
   mocap_markers_pub_->on_deactivate();
   mocap_rigid_body_pub_->on_deactivate();
+  activate_tf = false;
   RCLCPP_INFO(get_logger(), "Deactivated!\n");
 
   return CallbackReturnT::SUCCESS;
@@ -330,15 +332,13 @@ OptitrackDriverNode::on_cleanup(const rclcpp_lifecycle::State & state)
   } else {
     return CallbackReturnT::FAILURE;
   }
-
-  return CallbackReturnT::SUCCESS;
 }
 
 CallbackReturnT
 OptitrackDriverNode::on_shutdown(const rclcpp_lifecycle::State & state)
 {
   (void)state;
-  RCLCPP_INFO(get_logger(), "Shutted down!\n");
+  RCLCPP_INFO(get_logger(), "Shut down!\n");
 
   if (disconnect_optitrack()) {
     return CallbackReturnT::SUCCESS;

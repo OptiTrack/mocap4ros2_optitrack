@@ -1,0 +1,52 @@
+@startuml class_diagram
+
+rclcpp_lifecycle::LifecycleNode --|> OptitrackDriverNode : gives inheritence
+NatNetClient --|> OptitrackDriverNode : member of
+
+class rclcpp_lifecycle::LifecycleNode {
+  on_configure()
+  on_activate()
+  on_deactivate()
+  on_cleanup()
+  on_shutdown()
+  on_error()
+}
+
+class NatNetClient {
+  ErrorCode Connect()
+  ErrorCode Disconnect()
+  ErrorCode GetServerDescription()
+  ErrorCode GetDataDescriptionList()
+  ErrorCode SetFrameReceivedCallback()
+  ErrorCode SendMessageAndWait()
+}
+
+class OptitrackDriverNode {
+  NatNetClient client
+  sNatNetClientConnectParams client_params
+  sServerDescription server_description
+  sDataDescriptions data_descriptions
+  sFrameOfMocapData latest_data
+  sRigidBodyData latest_body_frame_data
+
+  on_configure()
+  on_activate()
+  on_deactivate()
+  on_cleanup()
+  on_shutdown()
+  on_error()
+  bool connect_optitrack()
+  bool disconnect_optitrack()
+  void set_settings_optitrack()
+  bool stop_optitrack()
+  void initParameters()
+  void process_frame(sFrameOfMocapData * data)
+  void publish_tf_data(sFrameOfMocapData * data)
+  void make_static_transform()
+  void update_rigid_bodies()
+  void update_rigid_body_id_map()
+  void get_rigid_bodies_from_params()
+}
+
+
+@enduml

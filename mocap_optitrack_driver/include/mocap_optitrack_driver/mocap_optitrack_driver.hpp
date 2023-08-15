@@ -120,6 +120,7 @@ protected:
   uint16_t server_command_port_;
   uint16_t server_data_port_;
   bool publish_tf_;
+  bool activate_tf = false;
   bool publish_y_up_tf_;
   std::string rb_parent_frame_name_;
   std::string y_up_frame_name_;
