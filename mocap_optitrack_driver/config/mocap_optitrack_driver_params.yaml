@@ -15,6 +15,7 @@ mocap_optitrack_driver_node:
     qos_reliability_policy: "best_effort"  # best_effort / reliable
     qos_depth: 10                         # 10 / 100 / 1000
     
+    use_optitrack_time: true
     publish_y_up_tf: true
     y_up_frame_name: "map"
     publish_tf: true

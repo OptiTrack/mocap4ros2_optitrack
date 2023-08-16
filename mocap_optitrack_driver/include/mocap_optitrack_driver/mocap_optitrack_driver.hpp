@@ -39,6 +39,7 @@
 #include "mocap_msgs/msg/rigid_bodies.hpp"
 
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/float64.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
@@ -84,7 +85,9 @@ public:
   void initParameters();
 
   void process_frame(sFrameOfMocapData * data);
-  void publish_tf_data(sFrameOfMocapData * data);
+  void publish_tf_data(
+    sFrameOfMocapData * data, 
+    const std_msgs::msg::Header & current_time);
   void make_static_transform();
 
 protected:
@@ -121,6 +124,7 @@ protected:
   uint16_t server_data_port_;
   bool publish_tf_;
   bool activate_tf = false;
+  bool use_optitrack_time_ = true;
   bool publish_y_up_tf_;
   std::string rb_parent_frame_name_;
   std::string y_up_frame_name_;

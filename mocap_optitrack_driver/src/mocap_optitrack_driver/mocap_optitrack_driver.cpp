@@ -149,11 +149,23 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
   frame_number_++;
   std::map<int, std::vector<mocap_msgs::msg::Marker>> marker2rb;
 
+  std_msgs::msg::Header current_time;
+  if (use_optitrack_time_)
+  {
+    current_time.stamp.sec = floor(data->fTimestamp);
+    double remander = data->fTimestamp - current_time.stamp.sec;
+    remander *= 10e6; // convert to whole number nanoseconds
+    current_time.stamp.nanosec = (uint32_t) remander;
+  }
+  else {
+    current_time.stamp = now();
+  }
+
   // Markers
   if (mocap_markers_pub_->get_subscription_count() > 0) {
     mocap_msgs::msg::Markers msg;
     msg.header.frame_id = rb_parent_frame_name_;
-    msg.header.stamp = now();
+    msg.header.stamp = current_time.stamp;
     msg.frame_number = frame_number_;
 
     for (int i = 0; i < data->nLabeledMarkers; i++) {
@@ -181,7 +193,7 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
   if (mocap_rigid_body_pub_->get_subscription_count() > 0) {
     mocap_msgs::msg::RigidBodies msg_rb;
     msg_rb.header.frame_id = rb_parent_frame_name_;
-    msg_rb.header.stamp = now();
+    msg_rb.header.stamp = current_time.stamp;
     msg_rb.frame_number = frame_number_;
 
     for (int i = 0; i < data->nRigidBodies; i++) {
@@ -203,19 +215,20 @@ OptitrackDriverNode::process_frame(sFrameOfMocapData * data)
     mocap_rigid_body_pub_->publish(msg_rb);
   }
   
-  if (publish_tf_ and activate_tf) {
-    publish_tf_data(data);
+  if (publish_tf_ && activate_tf) {
+    publish_tf_data(data, current_time);
   }
 }
 
-void OptitrackDriverNode::publish_tf_data(sFrameOfMocapData * data)
+void OptitrackDriverNode::publish_tf_data(sFrameOfMocapData * data, 
+  const std_msgs::msg::Header & current_time)
 {
   for (int i = 0; i < data->nRigidBodies; i++) {
     if (id_rigid_body_map.count(data->RigidBodies[i].ID) > 0 && 
         tf_rigid_bodies_to_publish.count(id_rigid_body_map[data->RigidBodies[i].ID]) > 0) {
       geometry_msgs::msg::TransformStamped t;
 
-      t.header.stamp = this->get_clock()->now(); //TODO: get this time from NatNet
+      t.header.stamp = current_time.stamp;
       t.header.frame_id = rb_parent_frame_name_;
       t.child_frame_id = id_rigid_body_map[data->RigidBodies[i].ID];
 
@@ -443,6 +456,8 @@ OptitrackDriverNode::initParameters()
   if (!valid_params) {
     RCLCPP_ERROR(get_logger(), "Not all required Parameters were set");
   }
+
+  get_parameter<bool>("use_optitrack_time_", use_optitrack_time_);
 
   if (!get_parameter<bool>("publish_tf", publish_tf_)) {
     publish_tf_ = false;
