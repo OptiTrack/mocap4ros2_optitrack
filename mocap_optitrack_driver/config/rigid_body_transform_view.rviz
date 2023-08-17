@@ -52,10 +52,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        Rigid Body 001:
-          Value: true
-        dean_rb:
-          Value: true
         map:
           Value: false
         optitrack:
@@ -68,10 +64,6 @@ Visualization Manager:
       Tree:
         map:
           optitrack:
-            Rigid Body 001:
-              {}
-            dean_rb:
-              {}
       Update Interval: 0
       Value: true
   Enabled: true
