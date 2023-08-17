@@ -37,7 +37,7 @@ def generate_launch_description():
       'mocap_optitrack_driver'), 'config', 'mocap_optitrack_driver_params.yaml')
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
-        'RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1')
+        'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
 
     # print('')
     # print('params_file_path: ', params_file_path)
@@ -61,12 +61,12 @@ def generate_launch_description():
     )
 
     # Make the driver node take the 'activate' transition
-    # driver_activate_trans_event = EmitEvent(
-    #    event = ChangeState(
-    #        lifecycle_node_matcher = launch.events.matchers.matches_action(driver_node),
-    #        transition_id = lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE,
-    #     )
-    # )
+    driver_activate_trans_event = EmitEvent(
+       event = ChangeState(
+           lifecycle_node_matcher = launch.events.matchers.matches_action(driver_node),
+           transition_id = lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE,
+        )
+    )
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -74,6 +74,6 @@ def generate_launch_description():
     ld.add_action(stdout_linebuf_envvar)
     ld.add_action(driver_node)
     ld.add_action(driver_configure_trans_event)
-    # ld.add_action(driver_activate_trans_event)
+    ld.add_action(driver_activate_trans_event)
 
     return ld
