@@ -36,11 +36,7 @@ Check that Optitrack configuration works fine and is connected. As the driver no
 ```
 ros2 lifecycle set /mocap_optitrack_driver_node activate
 ```
-Similarly you can shutdown with the following:
-```
-ros2 lifecycle set /mocap_optitrack_driver_node shutdown
-```
 Visualize in rViz:
 ```
-ros2 launch mocap_optitrack_driver optitrack_rviz.launch.py
+ros2 launch mocap_marker_viz mocap_marker_viz.launch.py mocap_system:=optitrack
 ```
