@@ -13,7 +13,9 @@ mocap_optitrack_driver_node:
     n_unlabeled_markers: 0
     qos_history_policy: "keep_all"         # keep_all / keep_last
     qos_reliability_policy: "best_effort"  # best_effort / reliable
-    qos_depth: 10                         # 10 / 100 / 1000
+    qos_depth: 10                          # 10 / 100 / 1000
+    natnet_version: ""                     # optionally requests specific version of data bitstream
+                                           # can be left blank "" or with 4 digit version i.e "4.1.0.0"
     
     use_optitrack_time: true
     publish_y_up_tf: true

@@ -59,10 +59,24 @@ void OptitrackDriverNode::set_settings_optitrack()
     rclcpp::shutdown();
   }
 
+  // TODO: set bitstream version. See sConnectionOptions in NatNetTypes.h
+  // TODO: Verify bitstream after setting SendMessageAndWait("Bitstream"...
+
   client_params.serverAddress = server_address_.c_str();
   client_params.localAddress = local_address_.c_str();
   client_params.serverCommandPort = server_command_port_;
   client_params.serverDataPort = server_data_port_;
+  if (valid_version) {
+    client_params.BitstreamVersion[0] = natnet_version_ints[3];
+    client_params.BitstreamVersion[1] = natnet_version_ints[2];
+    client_params.BitstreamVersion[2] = natnet_version_ints[1];
+    client_params.BitstreamVersion[3] = natnet_version_ints[0];
+    RCLCPP_INFO_STREAM(get_logger(), "Requesting NatNet version: " << 
+      unsigned(client_params.BitstreamVersion[3]) << "." <<
+      unsigned(client_params.BitstreamVersion[2]) << "." <<
+      unsigned(client_params.BitstreamVersion[1]) << "." <<
+      unsigned(client_params.BitstreamVersion[0]));
+  }
 }
 
 void OptitrackDriverNode::update_rigid_bodies(
@@ -295,8 +309,11 @@ OptitrackDriverNode::on_configure(const rclcpp_lifecycle::State & state)
     std::bind(&OptitrackDriverNode::update_rigid_bodies, this, 
       std::placeholders::_1, std::placeholders::_2));
 
-  connect_optitrack();
-  
+  if (!connect_optitrack()) {  // check output and if false try CallbackReturnT::FAILURE
+    RCLCPP_WARN(get_logger(), "Unable to connect. Performing Error Proccesing and Entering UNCONFIGURED state");
+    return CallbackReturnT::ERROR;
+  }
+
   update_rigid_body_id_map();
   if (publish_y_up_tf_) {
     make_static_transform();
@@ -382,6 +399,7 @@ OptitrackDriverNode::connect_optitrack()
   client->Disconnect();
   set_settings_optitrack();
 
+  // TODO: Catch the error state of not connecting and return to Unconfigured state
   if (client->Connect(client_params) == ErrorCode::ErrorCode_OK) {
     RCLCPP_INFO(get_logger(), "... connected!");
 
@@ -471,6 +489,37 @@ OptitrackDriverNode::initParameters()
   if (publish_y_up_tf_) {
     get_parameter<std::string>("y_up_frame_name", y_up_frame_name_);
   }
+  if (get_parameter<std::string>("natnet_version", natnet_version_) && natnet_version_ != "") {
+    RCLCPP_INFO(get_logger(), "parsing natnet version");
+    valid_version = parse_version(natnet_version_ints, natnet_version_);
+  }
+}
+
+bool OptitrackDriverNode::parse_version(uint8_t *ret_version, std::string str_version)
+{
+  std::istringstream iss(str_version);
+  std::string octet;
+  int count = 0;
+
+  while (std::getline(iss, octet, '.')) {
+    try {
+      ret_version[count] = (uint8_t)std::stoi(octet);
+      count++;
+    }
+    catch (const std::exception& e) {
+      RCLCPP_WARN_STREAM(get_logger(), "Invalid NatNet Version: " << e.what());
+      RCLCPP_WARN_STREAM(get_logger(), " initializing NatNet client without specifying version");
+      return false;
+    }
+  }
+
+  if (count != 4) {
+    RCLCPP_WARN_STREAM(get_logger(), "Invalid NatNet Version: incorrect count of version numbers");
+    RCLCPP_WARN_STREAM(get_logger(), " initializing NatNet client without specifying version");
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace mocap_optitrack_driver

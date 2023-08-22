@@ -96,6 +96,7 @@ protected:
     std::shared_ptr<std_srvs::srv::Trigger::Response> response);
   void update_rigid_body_id_map();
   void get_rigid_bodies_from_params();
+  bool parse_version(uint8_t *ret_version, std::string str_version);
 
   NatNetClient * client;
   sNatNetClientConnectParams client_params;
@@ -128,6 +129,9 @@ protected:
   bool publish_y_up_tf_;
   std::string rb_parent_frame_name_;
   std::string y_up_frame_name_;
+  std::string natnet_version_ = "";
+  uint8_t natnet_version_ints[4] = {0,0,0,0};
+  bool valid_version = false;
 
   uint32_t frame_number_{0};
 };
