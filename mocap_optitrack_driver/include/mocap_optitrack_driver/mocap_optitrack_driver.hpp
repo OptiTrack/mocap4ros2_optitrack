@@ -96,6 +96,9 @@ protected:
   bool parse_version(uint8_t *ret_version, std::string str_version);
 
   NatNetClient * client;
+
+  std::chrono::nanoseconds get_optitrack_system_latency(sFrameOfMocapData * data);
+
   sNatNetClientConnectParams client_params;
   sServerDescription server_description;
   sDataDescriptions * data_descriptions{nullptr};
