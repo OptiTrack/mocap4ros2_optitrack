@@ -14,13 +14,12 @@
 //
 // Author: David Vargas Frutos <david.vargas@urjc.es>
 
-#include <iostream>
-#include <memory>
 #include "mocap_optitrack_driver/mocap_optitrack_driver.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include <iostream>
+#include <memory>
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char *argv[]) {
   rclcpp::init(argc, argv);
   rclcpp::NodeOptions node_options;
   auto node = std::make_shared<mocap_optitrack_driver::OptitrackDriverNode>();
